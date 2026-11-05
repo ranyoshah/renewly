@@ -52,10 +52,10 @@ export default async function Connect({ searchParams }: { searchParams: Promise<
               <div>
                 <h3>Ask Claude</h3>
                 <p className="muted">In a new chat, make sure {APP_NAME} is switched on in the tools menu, attach a card statement and ask:</p>
-                <p className="prompt-sample" style={{ marginTop: 8 }}>“Log our SaaS subscriptions from this statement in {APP_NAME}.”</p>
+                <p className="prompt-sample" style={{ marginTop: 8 }}>“Log this statement in {APP_NAME}: every transaction by bucket, and our SaaS subscriptions.”</p>
                 <p className="muted small" style={{ marginTop: 8 }}>
-                  No statement handy? <a href="/sample-statement.pdf" download>Download a sample statement</a>. Later, try “What renews this month?” or
-                  “Make Priya the owner of Figma.”
+                  No statement handy? <a href="/sample-statement.pdf" download>Download a sample statement</a>. Later, try “What did we spend on travel this month?”,
+                  “What renews in the next 30 days?” or “Make Priya the owner of the Marketing bucket.”
                 </p>
               </div>
             </li>
@@ -94,7 +94,7 @@ export default async function Connect({ searchParams }: { searchParams: Promise<
           <form action={rotateLinks}><input type="hidden" name="which" value="mcp" /><button className="btn secondary small">New connector link</button></form>
           <form action={rotateLinks}><input type="hidden" name="which" value="cal" /><button className="btn secondary small">New calendar link</button></form>
           <form action={rotateLinks}><input type="hidden" name="which" value="share" /><button className="btn secondary small">New read-only link</button></form>
-          <form action={clearAll}><button className="btn danger small">Delete all subscriptions</button></form>
+          <form action={clearAll}><button className="btn danger small">Delete all data</button></form>
         </div>
       </section>
     </>

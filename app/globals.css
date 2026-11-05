@@ -16,8 +16,8 @@
   --claude-soft: #ebe9fb;
   --radius-lg: 14px;
   --radius: 8px;
-  --display: "Bricolage Grotesque", "Public Sans", system-ui, sans-serif;
-  --body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --display: "Bricolage Grotesque Variable", "Public Sans Variable", system-ui, sans-serif;
+  --body: "Public Sans Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -234,3 +234,59 @@ tbody tr:hover { background: color-mix(in srgb, var(--paper) 60%, transparent); 
   .burnline { animation: reveal 800ms cubic-bezier(.2,.7,.2,1) both; }
   @keyframes reveal { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 }
+
+/* Month view */
+.month-picker { display: flex; gap: 6px; align-items: center; }
+.month-picker select { width: auto; min-width: 170px; font-weight: 600; }
+.bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.bar-row { display: grid; grid-template-columns: minmax(150px, 1.1fr) 1.4fr auto; gap: 14px; align-items: center; padding: 9px 10px; margin: 0 -10px; border-radius: 10px; text-decoration: none; }
+.bar-row:hover { background: var(--paper); }
+.bars li.active .bar-row { background: var(--paper); box-shadow: inset 3px 0 0 var(--ink); }
+.bar-label { display: grid; grid-template-columns: 10px 1fr; column-gap: 8px; align-items: center; }
+.bar-label strong { font-weight: 600; font-size: 14px; }
+.bar-label .muted { grid-column: 2; }
+.bar-track { height: 10px; background: var(--paper); border-radius: 5px; overflow: hidden; }
+.bar-fill { display: block; height: 100%; border-radius: 5px; }
+.bar-amt { text-align: right; font-weight: 600; white-space: nowrap; }
+@media (max-width: 560px) {
+  .bar-row { grid-template-columns: 1fr auto; }
+  .bar-track { grid-column: 1 / -1; grid-row: 2; }
+}
+.owners-form { display: grid; gap: 8px; }
+.owner-row { display: grid; grid-template-columns: 1fr 1.2fr; gap: 10px; align-items: center; font-size: 14px; }
+.owner-row > span { display: flex; align-items: center; gap: 8px; }
+.owner-row input { padding: 7px 10px; font-size: 14px; }
+.bucket-select select { padding: 5px 8px; font-size: 13px; min-width: 150px; width: auto; }
+.txn-merchant { font-weight: 600; text-decoration: none; }
+.txn-merchant:hover { text-decoration: underline; }
+.txn-desc { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sub-tag { margin-left: 8px; background: var(--primary-soft); color: var(--primary); }
+td.refund { color: var(--primary); }
+details.add-txn summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; }
+details.add-txn summary::-webkit-details-marker { display: none; }
+details.add-txn summary::before { content: "+"; width: 24px; height: 24px; border-radius: 6px; background: var(--paper); display: grid; place-items: center; font-weight: 700; }
+details.add-txn[open] summary::before { content: "–"; }
+
+/* Friendlier messages */
+.notice { display: flex; align-items: center; gap: 10px; }
+.notice::before { content: "✓"; width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: var(--primary-ink); display: grid; place-items: center; font-size: 13px; font-weight: 700; flex: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .notice { animation: drop 300ms ease-out both; }
+  @keyframes drop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+}
+
+/* Landing preview */
+.preview { margin-top: 64px; }
+.preview h2 { margin-bottom: 6px; }
+.preview > p { margin-bottom: 20px; }
+.browser { border: 1px solid var(--rule); border-radius: 14px; overflow: hidden; background: var(--surface); box-shadow: 0 24px 60px -30px rgba(23, 32, 51, 0.35); }
+.browser-bar { display: flex; align-items: center; gap: 6px; padding: 10px 14px; border-bottom: 1px solid var(--rule); background: var(--paper); }
+.browser-bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--rule); display: block; }
+.browser-bar span { margin-left: 10px; font-size: 12px; color: var(--muted); }
+.browser img { display: block; width: 100%; height: auto; }
+.preview-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 20px; align-items: start; }
+@media (max-width: 860px) { .preview-grid { grid-template-columns: 1fr; } }
+.brand svg { flex: none; }
+.nav a { white-space: nowrap; }
+td.num { white-space: nowrap; }
+@media (max-width: 560px) { .panel-head { flex-wrap: wrap; } }

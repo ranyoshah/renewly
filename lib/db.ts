@@ -78,6 +78,32 @@ async function migrate() {
       created_at timestamptz not null default now()
     );
     create index if not exists activity_ws_idx on activity (workspace_id, created_at desc);
+    create table if not exists buckets (
+      workspace_id text not null references workspaces(id) on delete cascade,
+      name text not null,
+      owner text,
+      sort integer not null default 0,
+      primary key (workspace_id, name)
+    );
+    create table if not exists transactions (
+      id text primary key,
+      workspace_id text not null references workspaces(id) on delete cascade,
+      txn_date text not null,
+      merchant text not null,
+      description text,
+      amount numeric(14,2) not null,
+      currency text not null default 'INR',
+      bucket text not null default 'Other',
+      notes text,
+      source text not null default 'manual',
+      dedupe_key text not null,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now(),
+      unique (workspace_id, dedupe_key)
+    );
+    create index if not exists transactions_ws_date_idx on transactions (workspace_id, txn_date);
+    alter table transactions add column if not exists base_amount numeric(14,2);
+    alter table transactions add column if not exists base_currency text;
   `);
 
   const [demo] = await db`select id from workspaces where email = ${DEMO_EMAIL}`;

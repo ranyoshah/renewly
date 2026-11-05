@@ -30,11 +30,11 @@ export default async function Dashboard({
   if (!subs.length) {
     return (
       <>
-        {sp.cleared && <p className="notice">All subscriptions were removed.</p>}
+        {sp.cleared && <p className="notice" role="status">All subscriptions and transactions were deleted. You’re starting fresh.</p>}
         <section className="panel empty">
-          <h1>Nothing tracked yet</h1>
+          <h1>No subscriptions yet</h1>
           <p>Connect Claude, upload a card statement and ask it to log your subscriptions. They’ll show up here with totals and renewal dates.</p>
-          <p className="prompt-sample">“Here’s our card statement. Log our SaaS subscriptions in {APP_NAME}.”</p>
+          <p className="prompt-sample">“Log this statement in {APP_NAME}: every transaction by bucket, and our SaaS subscriptions.”</p>
           <div className="actions-row">
             <Link className="btn" href="/dashboard/connect">Connect Claude</Link>
             <a className="btn secondary" href="/sample-statement.pdf" download>Download a sample statement</a>
@@ -59,9 +59,12 @@ export default async function Dashboard({
 
   return (
     <>
-      {sp.deleted && <p className="notice">Subscription deleted.</p>}
+      {sp.deleted && <p className="notice" role="status">Subscription deleted.</p>}
       <div className="page-head">
-        <h1>{ws.name}</h1>
+        <div>
+          <p className="muted small">{ws.name}</p>
+          <h1>Subscriptions</h1>
+        </div>
         <div className="actions-row">
           <Link className="btn secondary" href="/dashboard/new">Add subscription</Link>
         </div>

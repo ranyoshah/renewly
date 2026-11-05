@@ -16,6 +16,7 @@ export const CATEGORIES = [
   "Cloud & Hosting",
   "Other",
 ] as const;
+const OVERLAP_CATEGORIES = ["Design", "Communication", "Productivity", "Sales & CRM", "Marketing", "Data & Analytics", "AI tools"];
 export const CYCLES = ["monthly", "quarterly", "annual", "weekly"] as const;
 export const STATUSES = ["active", "cancelling", "cancelled"] as const;
 
@@ -415,7 +416,8 @@ export function summarise(subs: Sub[], base: string, from = today()) {
     noOwner: live.filter((s) => !s.owner),
     noRenewalDate: live.filter((s) => !s.next_renewal),
     cancelling: subs.filter((s) => s.status === "cancelling"),
-    overlaps: categories.filter((c) => c.count >= 2 && c.category !== "Other"),
+    // Categories where tools usually substitute for each other; Engineering or Cloud tools rarely do.
+    overlaps: categories.filter((c) => c.count >= 2 && OVERLAP_CATEGORIES.includes(c.category)),
     cancelledSavings,
   };
 }

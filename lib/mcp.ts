@@ -21,19 +21,20 @@ import {
   daysUntil,
   type Sub,
 } from "./subs";
+import { BUCKETS, addTransactions, listBuckets, listMonths, listTxns, monthLabel, setBucketOwner, summariseMonth } from "./expenses";
 
-export const SERVER_INSTRUCTIONS = `${APP_NAME} is the user's SaaS spend tracker. It stores every software subscription their company pays for, shows totals and renewal dates on a live dashboard, and syncs renewals to their calendar.
+export const SERVER_INSTRUCTIONS = `${APP_NAME} is the user's company spend tracker. It keeps (a) every SaaS subscription with owners and renewal dates, and (b) every card transaction sorted into expense buckets (Tech & software, Travel, Meals & entertainment, Office & admin, Marketing, Professional services, Bank & card fees, Other), each bucket with a named owner. The app shows live dashboards and syncs renewals to the user's calendar.
 
-When the user shares a card or bank statement, invoices or receipts:
-1. Find the recurring software/SaaS charges. Ignore one-off purchases, travel, food, fuel, refunds, taxes and fees.
-2. Group repeated charges for the same vendor into ONE subscription.
-3. Work out billing_cycle from the charge pattern (monthly if it repeats every month; annual if it is one large charge from a SaaS vendor that bills yearly).
-4. Use the charge date as last_charged (the app calculates the next renewal), or give next_renewal if it is known.
-5. Pick the closest category from the allowed list. Use the vendor's clean brand name (e.g. "Figma", not "FIGMA* MONTHLY SF").
-6. Call add_subscriptions once with all of them. Vendors already tracked are updated, not duplicated.
-After adding, tell the user what was added, the new monthly total, and share the dashboard link.
+When the user shares a card or bank statement, do BOTH steps unless they ask for only one:
+A. Call add_transactions once with EVERY line of the statement (including refunds as negative amounts, and fees). Give each a clean merchant name, the original description, the date, the amount and currency as charged (plus amount_in_home_currency when the statement also shows the converted amount), and the best bucket. Software, SaaS and cloud go in "Tech & software"; card markup fees and taxes on them go in "Bank & card fees".
+B. Call add_subscriptions once with the recurring software/SaaS charges only:
+   - Group repeated charges for the same vendor into ONE subscription. Use the clean brand name (e.g. "Figma", not "FIGMA* MONTHLY SF").
+   - Work out billing_cycle from the pattern (monthly if it repeats monthly; annual if it is one large yearly charge).
+   - Use the charge date as last_charged (the app calculates the next renewal), or next_renewal if known.
+Re-sending the same statement is safe: the app skips duplicate transactions and updates existing subscriptions.
+After adding, tell the user what was added, the month's total by bucket, the SaaS monthly total, and share the dashboard links.
 
-For questions about spend, renewals, owners or overlap, call get_spend_summary or list_subscriptions. Always use the numbers the app returns; do not compute totals yourself.`;
+For questions about spend, renewals, owners or overlap, call get_monthly_spend, get_spend_summary or list_subscriptions. Always use the numbers the app returns; do not compute totals yourself.`;
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
 
@@ -191,6 +192,91 @@ export function registerTools(server: McpServer, ws: Workspace, baseUrl: string)
         `Dashboard: ${dash}`,
       ];
       return text(out.join("\n"));
+    },
+  );
+
+  server.registerTool(
+    "add_transactions",
+    {
+      title: "Add transactions",
+      description:
+        "Save card or bank statement lines to the monthly expense tracker, each sorted into an expense bucket. Duplicates (same date, merchant and amount) are skipped. Returns the month's totals by bucket and owner.",
+      inputSchema: z.object({
+        transactions: z
+          .array(
+            z.object({
+              date: date.describe("Transaction date, YYYY-MM-DD"),
+              merchant: z.string().min(1).max(120).describe("Clean merchant name, e.g. 'Uber', 'IndiGo', 'Figma'"),
+              description: z.string().max(200).optional().describe("Original statement text"),
+              amount: z.number().describe("Amount as charged; refunds are negative"),
+              currency: z.string().length(3).optional().describe("ISO currency, e.g. INR or USD"),
+              amount_in_home_currency: z.number().optional().describe("For foreign-currency charges: the amount the statement shows in the account's home currency (e.g. the INR column), if shown"),
+              bucket: z.enum(BUCKETS).describe("Expense bucket"),
+              notes: z.string().max(300).optional(),
+            }),
+          )
+          .min(1)
+          .max(300),
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    },
+    async ({ transactions }) => {
+      const res = await addTransactions(ws, transactions, "claude");
+      const months = [...new Set(transactions.map((t) => t.date.slice(0, 7)))].sort();
+      const buckets = await listBuckets(ws);
+      const parts = [
+        `Added ${res.added.length} transactions${res.duplicates.length ? `, skipped ${res.duplicates.length} already saved` : ""}${res.errors.length ? `, failed ${res.errors.length}` : ""}.`,
+        ...res.errors.map((e) => `! ${e.merchant}: ${e.error}`),
+      ];
+      for (const m of months) {
+        const s = summariseMonth(await listTxns(ws.id, m), buckets, ws.base_currency);
+        parts.push("", `${monthLabel(m)}: ${money(s.total, s.base)} across ${s.count} transactions.`);
+        for (const b of s.buckets) parts.push(`- ${b.name} (owner ${b.owner ?? "none"}): ${money(b.total, s.base)}, ${b.count} ${b.count === 1 ? "item" : "items"}`);
+        parts.push(`View and edit: ${baseUrl}/dashboard/month?m=${m}`);
+      }
+      return text(parts.join("\n"));
+    },
+  );
+
+  server.registerTool(
+    "get_monthly_spend",
+    {
+      title: "Get monthly spend",
+      description: "Totals for one month by expense bucket, with each bucket's owner and the largest transactions. Defaults to the latest month with data.",
+      inputSchema: z.object({ month: z.string().regex(/^\d{4}-\d{2}$/).optional().describe("YYYY-MM") }),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ month }) => {
+      const months = await listMonths(ws.id);
+      const m = month ?? months[0];
+      if (!m) return text(`No transactions saved yet. Share a card statement and I can add them. Dashboard: ${baseUrl}/dashboard/month`);
+      const txns = await listTxns(ws.id, m);
+      const s = summariseMonth(txns, await listBuckets(ws), ws.base_currency);
+      const out = [
+        `${monthLabel(m)}: ${money(s.total, s.base)} across ${s.count} transactions (in ${s.base}, approximate FX).`,
+        ...s.buckets.map((b) => `- ${b.name} (owner ${b.owner ?? "none"}): ${money(b.total, s.base)}, ${b.count} ${b.count === 1 ? "item" : "items"}`),
+        "",
+        "Largest:",
+        ...s.biggest.map((t) => `- ${t.txn_date} ${t.merchant}: ${money(t.amount, t.currency)} (${t.bucket})`),
+        s.noOwner.length ? `Buckets with spend but no owner: ${s.noOwner.map((b) => b.name).join(", ")}` : "",
+        `Months with data: ${months.map(monthLabel).join(", ")}`,
+        `View and edit: ${baseUrl}/dashboard/month?m=${m}`,
+      ];
+      return text(out.filter(Boolean).join("\n"));
+    },
+  );
+
+  server.registerTool(
+    "set_bucket_owner",
+    {
+      title: "Set bucket owner",
+      description: "Assign the person who owns an expense bucket (e.g. Travel → Meera). Use an empty owner to clear it.",
+      inputSchema: z.object({ bucket: z.enum(BUCKETS), owner: z.string().max(80) }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    },
+    async ({ bucket, owner }) => {
+      const r = await setBucketOwner(ws, bucket, owner, "claude");
+      return text(r.changed ? `${r.name} is now owned by ${r.after ?? "nobody"} (was ${r.before ?? "nobody"}).` : `${r.name} already owned by ${r.after ?? "nobody"}.`);
     },
   );
 }

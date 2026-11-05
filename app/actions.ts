@@ -6,6 +6,7 @@ import { clearSession, requireWorkspace, setSession } from "@/lib/auth";
 import { newKey, ready, sql } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { createSub, deleteAllSubs, deleteSub, updateSub, CURRENCIES, type SubInput } from "@/lib/subs";
+import { addTransactions, deleteAllTxns, deleteTxn, setBucketOwner, updateTxn, BUCKETS } from "@/lib/expenses";
 
 function str(f: FormData, k: string) {
   const v = f.get(k);
@@ -129,7 +130,64 @@ export async function rotateLinks(form: FormData) {
 
 export async function clearAll() {
   const ws = await requireWorkspace();
+  await deleteAllTxns(ws.id);
   await deleteAllSubs(ws);
   revalidatePath("/dashboard");
   redirect("/dashboard?cleared=1");
+}
+
+function readTxnForm(form: FormData) {
+  return {
+    date: str(form, "date"),
+    merchant: str(form, "merchant"),
+    amount: Number(str(form, "amount") || "0"),
+    currency: str(form, "currency"),
+    bucket: str(form, "bucket"),
+    notes: str(form, "notes"),
+  };
+}
+
+export async function saveTransaction(form: FormData) {
+  const ws = await requireWorkspace();
+  const id = str(form, "id");
+  try {
+    await updateTxn(ws, id, readTxnForm(form), "person");
+  } catch (e) {
+    back(`/dashboard/transactions/${id}`, (e as Error).message);
+  }
+  revalidatePath("/dashboard/month");
+  redirect(`/dashboard/transactions/${id}?saved=1`);
+}
+
+export async function moveTransaction(form: FormData) {
+  const ws = await requireWorkspace();
+  await updateTxn(ws, str(form, "id"), { bucket: str(form, "bucket") }, "person");
+  revalidatePath("/dashboard/month");
+  redirect(str(form, "return") || "/dashboard/month");
+}
+
+export async function addTransaction(form: FormData) {
+  const ws = await requireWorkspace();
+  const t = readTxnForm(form);
+  const res = await addTransactions(ws, [t], "person");
+  if (res.errors.length) back("/dashboard/month?add=1", res.errors[0].error);
+  if (res.duplicates.length) back("/dashboard/month?add=1", "That transaction is already saved.");
+  redirect(`/dashboard/month?m=${t.date.slice(0, 7)}&saved=added`);
+}
+
+export async function removeTransaction(form: FormData) {
+  const ws = await requireWorkspace();
+  const t = await deleteTxn(ws, str(form, "id"), "person");
+  redirect(`/dashboard/month${t ? `?m=${t.txn_date.slice(0, 7)}&saved=deleted` : ""}`);
+}
+
+export async function saveBucketOwners(form: FormData) {
+  const ws = await requireWorkspace();
+  for (const b of BUCKETS) {
+    const v = form.get(`owner:${b}`);
+    if (typeof v === "string") await setBucketOwner(ws, b, v, "person");
+  }
+  revalidatePath("/dashboard/month");
+  const m = str(form, "m");
+  redirect(`/dashboard/month?${m ? `m=${m}&` : ""}saved=owners`);
 }

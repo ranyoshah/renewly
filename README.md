@@ -1,8 +1,8 @@
 # Renewly
 
-**Every SaaS tool your company pays for, and when it renews.**
+**Every company card cost, sorted into buckets with an owner, and every SaaS tool with its renewal date.**
 
-Renewly is a SaaS spend tracker for startup founders and finance teams. You upload a card statement to Claude, and Claude picks out the subscriptions and saves them to Renewly through MCP. Renewly then gives you one live list with owners, monthly spend, renewal dates, a calendar feed and a read-only link for your CFO.
+Renewly is a spend tracker for startup founders and finance teams. You give Claude a card statement. Claude sorts every line into an expense bucket (Tech & software, Travel, Meals & entertainment, Office & admin, Marketing, Professional services, Bank & card fees, Other) and picks out the SaaS subscriptions, then saves both to Renewly through MCP. Renewly gives you a live monthly view by bucket, each with a named owner, plus one list of subscriptions with renewal dates, a calendar feed and a read-only link for your CFO.
 
 ## No AI inside
 
@@ -34,12 +34,16 @@ You (in Claude)            Claude                         Renewly (this app)
 | `list_subscriptions` | Lists subscriptions, filtered by status, category, no owner or renewing within N days. |
 | `update_subscription` | Changes owner, price, seats, plan, renewal date, notes or status (active, cancelling, cancelled). |
 | `get_spend_summary` | Returns totals the app calculates: monthly and annual burn, spend by category, upcoming renewals, tools with no owner, possible overlaps. |
+| `add_transactions` | Saves statement lines, each in an expense bucket. Duplicates (same date, merchant and amount) are skipped, so re-sending a statement is safe. Uses the statement's own INR amount for foreign charges when given. |
+| `get_monthly_spend` | Returns one month's total by bucket, each bucket's owner, and the largest transactions. |
+| `set_bucket_owner` | Assigns the person who owns a bucket, for example Travel → Meera. |
 
 Each account has its own private connector URL: `https://<app>/mcp/<private-key>`. It uses Streamable HTTP with no sign-in.
 
 ### In the web app
 
-- **Overview:** monthly and annual burn, the "burn line" by category, renewals in the next 30 days, things worth a look, and a filterable table
+- **This month:** total spend, a bar chart by bucket, bucket owners you can edit, and every transaction with an inline bucket picker and a month picker
+- **Subscriptions:** monthly and annual burn, the "burn line" by category, renewals in the next 30 days, things worth a look, and a filterable table
 - **Subscription page:** edit every field, mark as cancelling or cancelled, delete, and see the full history of changes by Claude and by you
 - **Activity:** every change, labelled Claude or You
 - **Connect Claude:** your connector link, calendar feed (`.ics` with a reminder 3 days before) and read-only share link
@@ -53,7 +57,7 @@ Each account has its own private connector URL: `https://<app>/mcp/<private-key>
 
 1. Log in and open **Connect Claude**. Copy the connector link.
 2. In Claude, open **Settings → Connectors → Add custom connector**. Name it "Renewly", paste the link and select **Add**.
-3. In a new chat, turn on Renewly in the tools menu, attach the statement and ask: *"Log our SaaS subscriptions from this statement in Renewly."*
+3. In a new chat, turn on Renewly in the tools menu, attach the statement and ask: *"Log this statement in Renewly: every transaction by bucket, and our SaaS subscriptions."*
 
 ## Stack
 
